@@ -4,8 +4,11 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+
 class Kernel extends ConsoleKernel
 {
     /**
@@ -16,12 +19,8 @@ class Kernel extends ConsoleKernel
      */
 
   private $conn = null;
-  private $con = null;
 
-//   protected function scheduleTimezone()
-// {
-//     return 'America/Mexico_City';
-// }
+
 
 
 protected function schedule(Schedule $schedule){
@@ -58,17 +57,29 @@ protected function schedule(Schedule $schedule){
         DB::table('withdrawals')->insert($whith);
        }
     
-  })->dailyAt('19:38');
+  })->dailyAt('23:00');
 
   $schedule->call(function (){
-    $date = carbon::now()->format('d-m-Y');
+    $date = CarbonImmutable::now()->startOfWeek();
+    $datefsol = $date->format('d-m-Y');
+    $datesql = $date->format('Y-m-d');
+    $fecha = strval($datesql);
+
     try{
-      $whithdrawals = "SELECT * FROM F_RET WHERE FECRET = #".$date."#";
+      $whithdrawals = "SELECT * FROM F_RET WHERE FECRET >= #".$datefsol."#";
       $exec = $this->conn->prepare($whithdrawals);
       $exec -> execute();
       $wth=$exec->fetchall(\PDO::FETCH_ASSOC);
     }catch (\PDOException $e){ die($e->getMessage());}
-      if($wth){
+
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+        DB::statement('SET SQL_SAFE_UPDATES = 0');
+        DB::table('withdrawals')->where('created_at','>=',$fecha)->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        DB::statement('SET SQL_SAFE_UPDATES = 1');
+        $idmax = DB::table('withdrawals')->max('id');
+        DB::statement('ALTER TABLE withdrawals AUTO_INCREMENT = '.$idmax.'');
+        // if($wth){
         foreach($wth as $wt){
           $provider = $wt['PRORET'] != 0 ? $wt['PRORET'] : 800  ;
           $whith [] = [
@@ -82,7 +93,8 @@ protected function schedule(Schedule $schedule){
           ];
         }
         DB::table('withdrawals')->insert($whith);
-       }
+      // }   
+       
     
   })->weeklyOn(0,'23:30');
 
@@ -91,6 +103,6 @@ protected function schedule(Schedule $schedule){
 
 
 
-}
+}}
 
-}
+
