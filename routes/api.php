@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\WithdraalsController;
+use App\Http\Controllers\ClientsContoller;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -28,4 +29,8 @@ Route::prefix('products')->group(function(){
 Route::prefix('withdrawals')->group(function(){
     Route::get('/',[WithdraalsController::class,'replywithdrawals']);
     Route::get('/index',[WithdraalsController::class,'index']);
+});
+
+Route::prefix('clients')->group(function(){
+    Route::get('/c',[ClientsContoller::class,'index']);
 });

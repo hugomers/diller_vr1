@@ -226,5 +226,38 @@ public function fsolupdate($filasFsol,$fsprice){
     return $res;
 }
 
+public function replace(Request $request){
+
+  $updates = $request->all();
+  
+    foreach($updates as $update){
+
+      $original = "'".$update['original']."'";
+      $upd = "'".$update['edit']."'";
+      
+      try{
+        $upda = "UPDATE F_LFA SET ARTLFA = $upd WHERE ARTLFA = $original";
+        $exec = $this->conn->prepare($upda);
+        $exec -> execute();
+        $updsto = "UPDATE F_LFR SET ARTLFR = $upd WHERE ARTLFR = $original";
+        $exec = $this->conn->prepare($updsto);
+        $exec -> execute();
+        $updlta = "UPDATE F_LEN SET ARTLEN = $upd WHERE ARTLEN = $original";
+        $exec = $this->conn->prepare($updlta);
+        $exec -> execute();
+        $updltr = "UPDATE F_LTR SET ARTLTR = $upd WHERE ARTLTR = $original";
+        $exec = $this->conn->prepare($updltr);
+        $exec -> execute();
+        // $updcin = "UPDATE F_CIN SET ARTCIN = $upd WHERE ARTCIN = $original";
+        // $exec = $this->conn->prepare($updcin);
+        // $exec -> execute();
+      }catch (\PDOException $e){ die($e->getMessage());}
+      
+    }
+
+
+  return response()->json("ya esta");
+}
+
 
 }
