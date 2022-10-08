@@ -56,6 +56,7 @@ public function products(request $request){
        ->value('PC.id'); 
       if($caty){//debe de existir la categoria
                 $status = $row['NPUART'] == 0 ? 1 : 3; //SE CAMBIA EL STATUS EN MYSQL PARA INSERTARLO
+                $unit_assort = DB::table('units_measures')->where('name',$row['CP3ART'])->value('id');
                 $ptosm = [
                    "id"=>null,
                    "short_code"=>INTVAL($row['CCOART']),
@@ -76,7 +77,8 @@ public function products(request $request){
                    "_maker" =>INTVAL($row['FTEART']),
                    "_unit_mesure" =>INTVAL($row['UMEART']),
                    "_state" =>INTVAL($status),
-                   "_product_additional" =>NULL
+                   "_product_additional" =>NULL,
+                   "_assortment_unit"=>$unit_assort
                 ];//SE CONSTRUYE EL ARREGLO DE LOS PRODUCTOS A COMO SE DEBEN DE INSERTAR EN MYSQL
                 if($old){
                    // codigo para actualizar en mysql
@@ -179,15 +181,18 @@ public function pricesnew($date){
                       ];
          }
 
-  if(is_null($_product)){$fails [] = "No se insertaron ni actualizaron los productos precios debido a que hubo un error en la insercion de productos";}else{
-  DB::table('product_prices')->where('_product', $_product)->delete();
-  DB::table('product_prices')->insert($price);
-  $goals[] = "Se Insertaron Correctamente los Precios";} 
-  $res = [
-        "row" => $goals,
-        "fail" => $fails
-        ];
-  return $res;
+     try{//SE MUESTRA LOS ARTICULO QUE SE INSERTARAN   
+    DB::table('product_prices')->where('_product', $_product)->delete();
+    DB::table('product_prices')->insert($price);
+  }catch (\Exception $e) {$fails[]= "no se insertaron debido a un problema con la insercion de productos";}
+  $goals[] = "Se Insertaron Correctamente los Precios";
+  if($fails){
+ return response()->json([ "fail"=>$fails]); }else{return response()->json(["row" => $goals]);}
+  // $res = [
+  //       "row" => $goals,
+  //       "fail" => $fails
+  //       ];
+  // return $res;
 }
 
 public function fsolupdate($filasFsol,$fsprice){
@@ -204,7 +209,8 @@ public function fsolupdate($filasFsol,$fsprice){
     foreach($stores as $store){
       $domain = $store->local_domain.":".$store->local_port;
     
-      $url ="$domain/diller/public/api/products/access";
+      // $url ="$domain/diller/public/api/products/access";
+      $url = "192.168.12.205:1619/diller/public/api/products/access";
       $ch = curl_init($url);
       $data = json_encode(["products" => $productos,"prices" => $prices]);
       curl_setopt($ch,CURLOPT_POSTFIELDS,$data);
@@ -216,15 +222,16 @@ public function fsolupdate($filasFsol,$fsprice){
       $exec = curl_exec($ch);
 
       curl_close($ch);
-      if($exec){$complete[]=$store->alias;}else{$failed[]=$store->alias;}
-    }
-    $res = [
-      "completado" => $complete,
-      "fail" => $failed
-    ];
+    //   if($exec){$complete[]=$store->alias;}else{$failed[]=$store->alias;}
+    // }
+    // $res = [
+    //   "completado" => $complete,
+    //   "fail" => $failed
+    // ];
 
-    return $res;
-}
+    // return $res;
+    return $ch;
+}}
 
 public function replace(Request $request){
 
@@ -248,15 +255,47 @@ public function replace(Request $request){
         $updltr = "UPDATE F_LTR SET ARTLTR = $upd WHERE ARTLTR = $original";
         $exec = $this->conn->prepare($updltr);
         $exec -> execute();
-        // $updcin = "UPDATE F_CIN SET ARTCIN = $upd WHERE ARTCIN = $original";
-        // $exec = $this->conn->prepare($updcin);
-        // $exec -> execute();
+        $updcin = "UPDATE F_LFB SET ARTLFB = $upd WHERE ARTLFB = $original";
+        $exec = $this->conn->prepare($updcin);
+        $exec -> execute();
+        $upddev = "UPDATE F_LFD SET ARTLFD = $upd WHERE ARTLFD = $original";
+        $exec = $this->conn->prepare($upddev);
+        $exec -> execute();
+
       }catch (\PDOException $e){ die($e->getMessage());}
       
     }
 
 
   return response()->json("ya esta");
+}
+
+public function minmax(){
+  $actual =DB::connection('actual')->table('product_stock as PS')
+                                ->join('products as P','P.id','=','PS._product')
+                                ->join('workpoints as W','W.id','=','PS._workpoint')->where('PS.min','>',0)
+                                ->select('P.code AS codigo','PS.min AS minimo','PS.max AS maximo','W.dominio AS dominio')
+                                ->get();
+
+  foreach($actual as $row){
+    $minmax [] = $row;
+    $update = DB::table('product_stock as PS')
+              ->join('products as P','P.id','=','PS._product')
+              ->join('warehouses as W','W.id','=','PS._warehouse')
+              ->join('stores as S','S.id','=','W._store')
+              ->where('P.code',$row->codigo)
+              ->where('S.local_domain',$row->dominio)
+              ->where('W._type',1)
+              ->where('PS._min','!=', 0)
+              ->update(['_min'=>$row->minimo,
+                        '_max'=>$row->maximo,
+                        ]);
+  }
+
+  
+
+return $update;
+
 }
 
 

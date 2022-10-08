@@ -20,10 +20,10 @@ use App\Http\Controllers\ClientsContoller;
 
 Route::prefix('products')->group(function(){
     Route::get('/',[ProductsController::class, 'index']);
-    Route::get('/access',[ProductsController::class, 'access']);
+    Route::get('/reply',[ProductsController::class, 'reply']);
     Route::get('/products',[ProductsController::class, 'products']);
     Route::get('/replace',[ProductsController::class, 'replace']);
-    Route::get('/este',[ProductsController::class, 'este']);
+    Route::get('/minmax',[ProductsController::class, 'minmax']);
 });
 
 Route::prefix('withdrawals')->group(function(){
